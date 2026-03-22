@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/preserve-manual-memoization */
 "use client";
 
 import { useCallback } from "react";
@@ -16,8 +17,10 @@ export default function Home() {
     addTask,
     startTask,
     completeTask,
+    failTask,
     removeTask,
   } = useTasks();
+  
 
   const handleSessionComplete = useCallback(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
@@ -44,6 +47,8 @@ export default function Home() {
     reset,
     stop,
   } = usePomodoro(handleSessionComplete);
+
+  const isTimerDone = !isRunning && minutes === 0 && seconds === 0;
 
   // Create task + immediately start it + start the timer
   const handleAddTask = useCallback(
@@ -75,6 +80,15 @@ export default function Home() {
     [completeTask, activeTask, stop]
   );
 
+  // Mark task failed + stop timer if it was the active one
+  const handleFailTask = useCallback(
+    (id: string) => {
+      failTask(id);
+      if (activeTask?.id === id) stop();
+    },
+    [activeTask?.id, failTask, stop]
+  );
+
   // Remove task + stop timer if it was the active one
   const handleRemoveTask = useCallback(
     (id: string) => {
@@ -85,7 +99,7 @@ export default function Home() {
   );
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-4 md:p-8">
+    <main className="min-h-screen bg-linear-to-br from-gray-950 via-gray-900 to-gray-950 p-4 md:p-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-8">
 
         <header className="text-center">
@@ -121,8 +135,10 @@ export default function Home() {
                 activeTask={activeTask}
                 pendingTasks={pendingTasks}
                 completedTasks={completedTasks}
+                isTimerDone={isTimerDone}
                 onStart={handleStartTask}
                 onComplete={handleCompleteTask}
+                onFail={handleFailTask}
                 onRemove={handleRemoveTask}
               />
             </div>

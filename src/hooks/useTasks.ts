@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import type { Task, TaskStatus } from "@/types";
+import { getRandomFruit } from "@/lib/fruits";
 
 const TASK_STATUS: {
   PENDING: TaskStatus;
@@ -50,11 +51,19 @@ export function useTasks() {
     setTasks((prev) =>
       prev.map((task) =>
         task.id === id
-          ? { ...task, status: TASK_STATUS.COMPLETED, completedAt: new Date() }
+          ? { ...task, status: TASK_STATUS.COMPLETED, completedAt: new Date(), fruit: getRandomFruit() }
           : task
       )
     );
   }, []);
+
+  const failTask = useCallback((id: string) => {
+  setTasks((prev) =>
+    prev.map((task) =>
+      task.id === id ? { ...task, status: "failed" } : task
+    )
+  );
+}, []);
 
   const removeTask = useCallback((id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
@@ -74,6 +83,7 @@ export function useTasks() {
     addTask,
     startTask,
     completeTask,
+    failTask,
     removeTask,
   };
 }

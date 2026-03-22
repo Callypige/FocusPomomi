@@ -100,7 +100,7 @@ export default function PomodoroTimer({
         <button
           onClick={isRunning ? onPause : onResume}
           disabled={!canResume}
-          className="rounded-full bg-gradient-to-r from-red-500 to-orange-500 px-8 py-3 font-semibold text-white shadow-lg transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-full bg-linear-to-r from-red-500 to-orange-500 px-8 py-3 font-semibold text-white shadow-lg transition-all hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {isRunning ? "⏸ Pause" : "▶ Reprendre"}
         </button>
