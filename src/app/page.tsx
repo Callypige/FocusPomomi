@@ -64,7 +64,7 @@ export default function Home() {
     startFocusSession(durationMinutes);
   },
   [addTask, startTask, startFocusSession]
-);
+  );
 
   // Switch active task + restart timer with its duration
   const handleStartTask = useCallback(

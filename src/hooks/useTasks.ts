@@ -6,9 +6,7 @@ import { getRandomFruit } from "@/lib/fruits";
 
 type TaskApiItem = Omit<Task, "id"> & { _id: string };
 
-// Raw fetch helpers
-// These functions call our API routes and return normalized data.
-// They are used by our React Query hooks below to keep API logic separate from UI logic.
+// Raw fetch helpers — keep API logic separate from UI logic
 const api = {
   getTasks: (): Promise<TaskApiItem[]> => fetch("/api/tasks").then((r) => r.json()),
   createTask: (body: { title: string; durationMinutes: number }) =>
@@ -27,8 +25,7 @@ const api = {
     fetch(`/api/tasks/${id}`, { method: "DELETE" }).then((r) => r.json()),
 };
 
-// Normalizes task data from API (e.g. converts _id to id, parses dates)
-// This ensures our frontend always works with consistent Task objects
+// Normalizes task from API — converts _id to id and parses dates
 function normalizeTask(t: TaskApiItem): Task {
   return {
     ...t,
@@ -41,7 +38,7 @@ function normalizeTask(t: TaskApiItem): Task {
 export function useTasks() {
   const queryClient = useQueryClient();
 
-  // Fetch all tasks — React Query handles cache, loading, abort automatically
+  // Fetch all tasks on mount — React Query handles caching and abort
   const { data } = useQuery<Task[]>({
     queryKey: ["tasks"],
     queryFn: () => api.getTasks().then((data) => data.map(normalizeTask)),
@@ -52,7 +49,7 @@ export function useTasks() {
     mutationFn: (vars: { title: string; durationMinutes: number }) =>
       api.createTask(vars).then(normalizeTask),
     onSuccess: (newTask) => {
-      // Add task to cache without refetching
+      // Prepend new task to cache without refetching
       queryClient.setQueryData<Task[]>(["tasks"], (prev = []) => [newTask, ...prev]);
     },
   });
@@ -60,15 +57,21 @@ export function useTasks() {
   const updateMutation = useMutation({
     mutationFn: ({ id, ...body }: Partial<Task> & { id: string }) =>
       api.updateTask(id, body).then(normalizeTask),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    onSuccess: (updatedTask) => {
+      // Replace only the updated task in cache — no refetch to avoid flash
+      queryClient.setQueryData<Task[]>(["tasks"], (prev = []) =>
+        prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+      );
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.deleteTask(id).then((res) => res),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    mutationFn: (id: string) => api.deleteTask(id),
+    onSuccess: (_, id) => {
+      // Remove deleted task from cache — no refetch
+      queryClient.setQueryData<Task[]>(["tasks"], (prev = []) =>
+        prev.filter((t) => t.id !== id)
+      );
     },
   });
 
@@ -93,6 +96,7 @@ export function useTasks() {
   const completeTask = (id: string) => {
     const fruit = getRandomFruit();
     const completedAt = new Date();
+    // Optimistic update — show fruit immediately before DB confirms
     queryClient.setQueryData<Task[]>(["tasks"], (prev = []) =>
       prev.map((t) => (t.id === id ? { ...t, status: "completed", fruit, completedAt } : t))
     );
@@ -100,6 +104,7 @@ export function useTasks() {
   };
 
   const failTask = (id: string) => {
+    // Optimistic update
     queryClient.setQueryData<Task[]>(["tasks"], (prev = []) =>
       prev.map((t) => (t.id === id ? { ...t, status: "failed" } : t))
     );
@@ -107,6 +112,7 @@ export function useTasks() {
   };
 
   const removeTask = (id: string) => {
+    // Optimistic update — remove from cache before DB confirms
     queryClient.setQueryData<Task[]>(["tasks"], (prev = []) =>
       prev.filter((t) => t.id !== id)
     );
