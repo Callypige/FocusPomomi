@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/preserve-manual-memoization */
+ 
 "use client";
 
 import { useCallback } from "react";
@@ -8,7 +8,9 @@ import TaskForm from "@/components/TaskForm";
 import TaskList from "@/components/TaskList";
 import PomodoroTimer from "@/components/PomodoroTimer";
 
+
 export default function Home() {
+  // Tasks state + actions
   const {
     tasks,
     activeTask,
@@ -21,18 +23,20 @@ export default function Home() {
     removeTask,
   } = useTasks();
   
-
+  // Callback to trigger when a pomodoro session completes (either focus or break)
   const handleSessionComplete = useCallback(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
+    // Request permission if not already granted
     Notification.requestPermission().then((perm) => {
       if (perm === "granted") {
-        new Notification("🍅 Session done!", {
-          body: activeTask ? `Great job on "${activeTask.title}"!` : "Break time!",
+        new Notification("🍅 Session terminée !", {
+          body: activeTask ? `Bravo pour "${activeTask.title}" !` : "C'est l'heure de la pause !",
         });
       }
     });
   }, [activeTask]);
 
+  // Pomodoro timer state + actions
   const {
     mode,
     minutes,
@@ -48,6 +52,8 @@ export default function Home() {
     stop,
   } = usePomodoro(handleSessionComplete);
 
+  // Helper to know if the timer just completed 
+  // (used to show "Mark as done" button on tasks)
   const isTimerDone = !isRunning && minutes === 0 && seconds === 0;
 
   // Create task + immediately start it + start the timer

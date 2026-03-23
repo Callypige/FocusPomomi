@@ -1,6 +1,7 @@
 "use client";
 
 import type { PomodoroMode } from "@/types";
+import { useMemo } from "react";
 
 interface PomodoroTimerProps {
   mode: PomodoroMode;
@@ -43,10 +44,16 @@ export default function PomodoroTimer({
   onStartBreak,
   onStartWithoutTask,
 }: PomodoroTimerProps) {
+
+  // Circle radius and circumference for SVG progress ring
+  // We use useMemo to avoid recalculating circumference
+  // on every render since radius is constant
   const radius = 88;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
-  const pad = (n: number) => String(n).padStart(2, "0");
+  const circumference = useMemo(() => 2 * Math.PI * radius, [radius]);
+  const strokeDashoffset = useMemo(
+  () => circumference - (progress / 100) * circumference,
+  [circumference, progress]
+  );
 
   // Timer can be resumed if: already running, a task is active, or we're in a break
   const canResume = isRunning || !!activeTaskTitle || mode !== "focus";
