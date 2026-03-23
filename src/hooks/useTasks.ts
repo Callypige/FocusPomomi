@@ -1,85 +1,92 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import type { Task, TaskStatus } from "@/types";
+import { useState, useEffect, useCallback } from "react";
+import type { Task } from "@/types";
 import { getRandomFruit } from "@/lib/fruits";
-
-const TASK_STATUS: {
-  PENDING: TaskStatus;
-  IN_PROGRESS: TaskStatus;
-  COMPLETED: TaskStatus;
-  FAILED: TaskStatus;
-} = {
-  PENDING: "pending",
-  IN_PROGRESS: "in_progress",
-  COMPLETED: "completed",
-  FAILED: "failed",
-};
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
 
-  const addTask = useCallback((title: string, durationMinutes: number): string => {
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      title,
-      durationMinutes,
-      status: TASK_STATUS.PENDING,
-      createdAt: new Date(),
-    };
+  // Load tasks from DB on mount
+  useEffect(() => {
+    fetch("/api/tasks")
+      .then((r) => r.json())
+      .then((data) =>
+        setTasks(
+          data.map((t: Task & { _id: string }) => ({
+            ...t,
+            id: t._id,
+            createdAt: new Date(t.createdAt),
+            completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
+          }))
+        )
+      );
+  }, []);
+
+  const addTask = useCallback(async (title: string, durationMinutes: number): Promise<string> => {
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, durationMinutes }),
+    });
+    const task = await res.json();
+    const newTask = { ...task, id: task._id, createdAt: new Date(task.createdAt) };
     setTasks((prev) => [newTask, ...prev]);
     return newTask.id;
   }, []);
 
-  const startTask = useCallback((id: string) => {
-  setTasks((prev) =>
-    prev.map((task) => {
-      if (task.status === TASK_STATUS.COMPLETED) return task;
-
-      const newStatus = task.id === id
-        ? TASK_STATUS.IN_PROGRESS
-        : task.status === TASK_STATUS.IN_PROGRESS
-          ? TASK_STATUS.PENDING
-          : task.status;
-
-      return { ...task, status: newStatus };
-    })
-  );
-}, []);
-
-  const completeTask = useCallback((id: string) => {
+  const startTask = useCallback(async (id: string) => {
     setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? { ...task, status: TASK_STATUS.COMPLETED, completedAt: new Date(), fruit: getRandomFruit() }
-          : task
-      )
+      prev.map((t) => {
+        if (t.status === "completed" || t.status === "failed") return t;
+        if (t.id === id) return { ...t, status: "in_progress" };
+        if (t.status === "in_progress") return { ...t, status: "pending" };
+        return t;
+      })
     );
+    await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "in_progress" }),
+    });
   }, []);
 
-  const failTask = useCallback((id: string) => {
-  setTasks((prev) =>
-    prev.map((task) =>
-      task.id === id ? { ...task, status: "failed" } : task
-    )
-  );
-}, []);
+  const completeTask = useCallback(async (id: string) => {
+    const fruit = getRandomFruit();
+    const completedAt = new Date();
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, status: "completed", fruit, completedAt } : t))
+    );
+    await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "completed", fruit, completedAt }),
+    });
+  }, []);
 
-  const removeTask = useCallback((id: string) => {
+  const failTask = useCallback(async (id: string) => {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: "failed" } : t)));
+    await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "failed" }),
+    });
+  }, []);
+
+  const removeTask = useCallback(async (id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    await fetch(`/api/tasks/${id}`, { method: "DELETE" });
   }, []);
 
-  const activeTask = tasks.find((t) => t.status === TASK_STATUS.IN_PROGRESS) ?? null;
-  const pendingTasks = tasks.filter((t) => t.status === TASK_STATUS.PENDING);
-  const completedTasks = tasks.filter((t) => t.status === TASK_STATUS.COMPLETED);
-  const failedTasks = tasks.filter((t) => t.status === TASK_STATUS.FAILED);
+  const activeTask = tasks.find((t) => t.status === "in_progress") ?? null;
+  const pendingTasks = tasks.filter((t) => t.status === "pending");
+  const completedTasks = tasks.filter((t) => t.status === "completed" || t.status === "failed");
 
   return {
     tasks,
     activeTask,
     pendingTasks,
     completedTasks,
-    failedTasks,
     addTask,
     startTask,
     completeTask,

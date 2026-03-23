@@ -11,6 +11,12 @@ if (!cached.mongoose) {
   cached.mongoose = { conn: null, promise: null };
 }
 
+// Connect to MongoDB immediately
+cached.mongoose!.promise = mongoose.connect(MONGODB_URI).then((m) => {
+  console.log("✅ MongoDB connected");
+  return m;
+});
+
 export async function connectDB() {
   if (cached.mongoose!.conn) return cached.mongoose!.conn;
 

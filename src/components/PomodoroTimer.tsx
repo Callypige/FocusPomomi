@@ -58,6 +58,10 @@ export default function PomodoroTimer({
   // Timer can be resumed if: already running, a task is active, or we're in a break
   const canResume = isRunning || !!activeTaskTitle || mode !== "focus";
 
+  // Helper to pad numbers with leading zeros (e.g. 5 -> "05")
+  const pad = (value: number): string => {
+    return value.toString().padStart(2, "0");
+  };
   return (
     <div className="flex flex-col items-center gap-6">
 

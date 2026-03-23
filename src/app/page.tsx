@@ -58,13 +58,13 @@ export default function Home() {
 
   // Create task + immediately start it + start the timer
   const handleAddTask = useCallback(
-    (title: string, durationMinutes: number) => {
-      const id = addTask(title, durationMinutes);
-      startTask(id);
-      startFocusSession(durationMinutes);
-    },
-    [addTask, startTask, startFocusSession]
-  );
+  async (title: string, durationMinutes: number) => {
+    const id = await addTask(title, durationMinutes); 
+    startTask(id);
+    startFocusSession(durationMinutes);
+  },
+  [addTask, startTask, startFocusSession]
+);
 
   // Switch active task + restart timer with its duration
   const handleStartTask = useCallback(
