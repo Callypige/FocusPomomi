@@ -49,14 +49,12 @@ export default function Home() {
     pause,
     resume,
     reset,
-    stop,
   } = usePomodoro(handleSessionComplete);
 
   // Helper to know if the timer just completed 
   // (used to show "Mark as done" button on tasks)
   const isTimerDone = !isRunning && minutes === 0 && seconds === 0;
 
-  // Create task + immediately start it + start the timer
   const handleAddTask = useCallback(
   async (title: string, durationMinutes: number) => {
     const id = await addTask(title, durationMinutes); 
@@ -83,7 +81,7 @@ export default function Home() {
       completeTask(id);
       if (activeTask?.id === id) stop();
     },
-    [completeTask, activeTask, stop]
+    [completeTask, activeTask]
   );
 
   // Mark task failed + stop timer if it was the active one
@@ -92,7 +90,7 @@ export default function Home() {
       failTask(id);
       if (activeTask?.id === id) stop();
     },
-    [activeTask?.id, failTask, stop]
+    [activeTask?.id, failTask]
   );
 
   // Remove task + stop timer if it was the active one

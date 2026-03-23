@@ -14,13 +14,13 @@ const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => r.json() as Promise<TaskApiItem>),
+    }).then((r) => r.json()),
   updateTask: (id: string, body: Partial<Task>) =>
     fetch(`/api/tasks/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then((r) => r.json() as Promise<TaskApiItem>),
+    }).then((r) => r.json()),
   deleteTask: (id: string) =>
     fetch(`/api/tasks/${id}`, { method: "DELETE" }).then((r) => r.json()),
 };
@@ -28,8 +28,11 @@ const api = {
 // Normalizes task from API — converts _id to id and parses dates
 function normalizeTask(t: TaskApiItem): Task {
   return {
-    ...t,
     id: t._id,
+    title: t.title,
+    durationMinutes: t.durationMinutes,
+    status: t.status,
+    fruit: t.fruit,
     createdAt: new Date(t.createdAt),
     completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
   };
@@ -39,11 +42,10 @@ export function useTasks() {
   const queryClient = useQueryClient();
 
   // Fetch all tasks on mount — React Query handles caching and abort
-  const { data } = useQuery<Task[]>({
+  const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ["tasks"],
     queryFn: () => api.getTasks().then((data) => data.map(normalizeTask)),
   });
-  const tasks: Task[] = data ?? [];
 
   const addMutation = useMutation({
     mutationFn: (vars: { title: string; durationMinutes: number }) =>
