@@ -73,6 +73,8 @@ export default function TaskItem({
               {isTimerDone ? "⏱ Timer terminé !" : "Pomodoro lié"}
             </span>
           )}
+          {/* Display planned duration for quick scan */}
+          <span className="text-xs text-gray-400">{task.durationMinutes} min</span>
         </div>
       </div>
 
@@ -80,6 +82,7 @@ export default function TaskItem({
       <div className="flex items-center gap-1 shrink-0">
         {task.status === "pending" && (
           <button
+            type="button"
             onClick={() => onStart(task.id)}
             className="px-2 py-1 text-xs rounded-lg bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 transition-colors"
           >
@@ -90,6 +93,7 @@ export default function TaskItem({
           <>
             {/* "Réussie" only unlocked when timer has reached zero */}
             <button
+              type="button"
               onClick={() => onComplete(task.id)}
               disabled={!isTimerDone}
               className="px-2 py-1 text-xs rounded-lg bg-green-500/20 text-green-300 hover:bg-green-500/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
@@ -97,6 +101,7 @@ export default function TaskItem({
               ✓ Réussie
             </button>
             <button
+              type="button"
               onClick={() => onFail(task.id)}
               className="px-2 py-1 text-xs rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30 transition-colors"
             >
@@ -106,6 +111,7 @@ export default function TaskItem({
         )}
         {isFinished && (
           <button
+            type="button"
             onClick={() => onRemove(task.id)}
             className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
             title="Supprimer"

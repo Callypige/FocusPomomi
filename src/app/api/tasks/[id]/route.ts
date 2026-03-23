@@ -8,7 +8,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await connectDB();
     const body = await req.json();
     const { id } = await params;
-    const task = await TaskModel.findByIdAndUpdate(id, body, { new: true });
+    const task = await TaskModel.findByIdAndUpdate(id, body, { returnDocument: "after" });
 
     if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 

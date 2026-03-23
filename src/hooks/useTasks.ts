@@ -1,42 +1,85 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Task } from "@/types";
 import { getRandomFruit } from "@/lib/fruits";
 
-export function useTasks() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+type TaskApiItem = Omit<Task, "id"> & { _id: string };
 
-  // Load tasks from DB on mount
-  useEffect(() => {
-    fetch("/api/tasks")
-      .then((r) => r.json())
-      .then((data) =>
-        setTasks(
-          data.map((t: Task & { _id: string }) => ({
-            ...t,
-            id: t._id,
-            createdAt: new Date(t.createdAt),
-            completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
-          }))
-        )
-      );
-  }, []);
-
-  const addTask = useCallback(async (title: string, durationMinutes: number): Promise<string> => {
-    const res = await fetch("/api/tasks", {
+// Raw fetch helpers
+// These functions call our API routes and return normalized data.
+// They are used by our React Query hooks below to keep API logic separate from UI logic.
+const api = {
+  getTasks: (): Promise<TaskApiItem[]> => fetch("/api/tasks").then((r) => r.json()),
+  createTask: (body: { title: string; durationMinutes: number }) =>
+    fetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, durationMinutes }),
-    });
-    const task = await res.json();
-    const newTask = { ...task, id: task._id, createdAt: new Date(task.createdAt) };
-    setTasks((prev) => [newTask, ...prev]);
-    return newTask.id;
-  }, []);
+      body: JSON.stringify(body),
+    }).then((r) => r.json() as Promise<TaskApiItem>),
+  updateTask: (id: string, body: Partial<Task>) =>
+    fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => r.json() as Promise<TaskApiItem>),
+  deleteTask: (id: string) =>
+    fetch(`/api/tasks/${id}`, { method: "DELETE" }).then((r) => r.json()),
+};
 
-  const startTask = useCallback(async (id: string) => {
-    setTasks((prev) =>
+// Normalizes task data from API (e.g. converts _id to id, parses dates)
+// This ensures our frontend always works with consistent Task objects
+function normalizeTask(t: TaskApiItem): Task {
+  return {
+    ...t,
+    id: t._id,
+    createdAt: new Date(t.createdAt),
+    completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
+  };
+}
+
+export function useTasks() {
+  const queryClient = useQueryClient();
+
+  // Fetch all tasks — React Query handles cache, loading, abort automatically
+  const { data } = useQuery<Task[]>({
+    queryKey: ["tasks"],
+    queryFn: () => api.getTasks().then((data) => data.map(normalizeTask)),
+  });
+  const tasks: Task[] = data ?? [];
+
+  const addMutation = useMutation({
+    mutationFn: (vars: { title: string; durationMinutes: number }) =>
+      api.createTask(vars).then(normalizeTask),
+    onSuccess: (newTask) => {
+      // Add task to cache without refetching
+      queryClient.setQueryData<Task[]>(["tasks"], (prev = []) => [newTask, ...prev]);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, ...body }: Partial<Task> & { id: string }) =>
+      api.updateTask(id, body).then(normalizeTask),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteTask(id).then((res) => res),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+
+  const addTask = async (title: string, durationMinutes: number): Promise<string> => {
+    const task = await addMutation.mutateAsync({ title, durationMinutes });
+    return task.id;
+  };
+
+  const startTask = (id: string) => {
+    // Optimistic update — update cache immediately, then sync to DB
+    queryClient.setQueryData<Task[]>(["tasks"], (prev = []) =>
       prev.map((t) => {
         if (t.status === "completed" || t.status === "failed") return t;
         if (t.id === id) return { ...t, status: "in_progress" };
@@ -44,39 +87,31 @@ export function useTasks() {
         return t;
       })
     );
-    await fetch(`/api/tasks/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "in_progress" }),
-    });
-  }, []);
+    updateMutation.mutate({ id, status: "in_progress" });
+  };
 
-  const completeTask = useCallback(async (id: string) => {
+  const completeTask = (id: string) => {
     const fruit = getRandomFruit();
     const completedAt = new Date();
-    setTasks((prev) =>
+    queryClient.setQueryData<Task[]>(["tasks"], (prev = []) =>
       prev.map((t) => (t.id === id ? { ...t, status: "completed", fruit, completedAt } : t))
     );
-    await fetch(`/api/tasks/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "completed", fruit, completedAt }),
-    });
-  }, []);
+    updateMutation.mutate({ id, status: "completed", fruit, completedAt });
+  };
 
-  const failTask = useCallback(async (id: string) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: "failed" } : t)));
-    await fetch(`/api/tasks/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "failed" }),
-    });
-  }, []);
+  const failTask = (id: string) => {
+    queryClient.setQueryData<Task[]>(["tasks"], (prev = []) =>
+      prev.map((t) => (t.id === id ? { ...t, status: "failed" } : t))
+    );
+    updateMutation.mutate({ id, status: "failed" });
+  };
 
-  const removeTask = useCallback(async (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    await fetch(`/api/tasks/${id}`, { method: "DELETE" });
-  }, []);
+  const removeTask = (id: string) => {
+    queryClient.setQueryData<Task[]>(["tasks"], (prev = []) =>
+      prev.filter((t) => t.id !== id)
+    );
+    deleteMutation.mutate(id);
+  };
 
   const activeTask = tasks.find((t) => t.status === "in_progress") ?? null;
   const pendingTasks = tasks.filter((t) => t.status === "pending");
