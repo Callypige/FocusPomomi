@@ -49,6 +49,7 @@ export default function Home() {
     pause,
     resume,
     reset,
+    stop: stopTimer,
   } = usePomodoro(handleSessionComplete);
 
   // Helper to know if the timer just completed 
@@ -79,27 +80,27 @@ export default function Home() {
   const handleCompleteTask = useCallback(
     (id: string) => {
       completeTask(id);
-      if (activeTask?.id === id) stop();
+      if (activeTask?.id === id) stopTimer();
     },
-    [completeTask, activeTask]
+    [completeTask, activeTask, stopTimer]
   );
 
   // Mark task failed + stop timer if it was the active one
   const handleFailTask = useCallback(
     (id: string) => {
       failTask(id);
-      if (activeTask?.id === id) stop();
+      if (activeTask?.id === id) stopTimer();
     },
-    [activeTask?.id, failTask]
+    [activeTask?.id, failTask, stopTimer]
   );
 
   // Remove task + stop timer if it was the active one
   const handleRemoveTask = useCallback(
     (id: string) => {
       removeTask(id);
-      if (activeTask?.id === id) stop();
+      if (activeTask?.id === id) stopTimer();
     },
-    [removeTask, activeTask, stop]
+    [removeTask, activeTask, stopTimer]
   );
 
   return (
