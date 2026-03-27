@@ -8,7 +8,18 @@ type TaskApiItem = Omit<Task, "id"> & { _id: string };
 
 // Raw fetch helpers — keep API logic separate from UI logic
 const api = {
-  getTasks: (): Promise<TaskApiItem[]> => fetch("/api/tasks").then((r) => r.json()),
+  getTasks: async (): Promise<TaskApiItem[]> => {
+    const response = await fetch("/api/tasks");
+    const payload = await response.json();
+
+    if (!response.ok) {
+      const message =
+        typeof payload?.error === "string" ? payload.error : "Failed to fetch tasks";
+      throw new Error(message);
+    }
+
+    return Array.isArray(payload) ? payload : [];
+  },
   createTask: (body: { title: string; durationMinutes: number }) =>
     fetch("/api/tasks", {
       method: "POST",

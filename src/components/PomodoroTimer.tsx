@@ -67,7 +67,10 @@ export default function PomodoroTimer({
 
       {/* Active task or current mode label */}
       <div className="w-full rounded-2xl border border-white/10 bg-black/20 p-4">
-        <p className="text-xs uppercase tracking-widest text-gray-500">Session en cours</p>
+        {/* Show "Session en cours" only when a session is active (not idle) */}
+        {isRunning && (
+          <p className="text-xs uppercase tracking-widest text-gray-500">Session en cours</p>
+        )}
         <p className="mt-1 font-semibold text-white">
           {mode !== "focus"
             ? MODE_LABELS[mode]
