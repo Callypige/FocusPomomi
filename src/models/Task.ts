@@ -1,6 +1,7 @@
 import { Schema, model, models } from "mongoose";
 
 const TaskSchema = new Schema({
+  userId: { type: String, required: true },
   title: { type: String, required: true },
   durationMinutes: { type: Number, required: true },
   status: {

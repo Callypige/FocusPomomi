@@ -5,12 +5,12 @@ import Providers from "@/app/providers";
 import Header from "@/components/Header";
 
 export const metadata: Metadata = {
-  title: "FocusPomomi 🍅",
+  title: "FocusPomomi - Pomodoro Timer & Task Manager",
   description: "Pomodoro timer avec gestion de tâches et récompenses de fruits",
   icons: {
-    icon: "/clock-icon.svg",
-    shortcut: "/clock-icon.svg",
-    apple: "/clock-icon.svg",
+    icon: "/clock-icon.png",
+    shortcut: "/clock-icon.png",
+    apple: "/clock-icon.png",
   },
 };
 
