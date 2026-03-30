@@ -102,7 +102,7 @@ export default function HomeClient() {
   );
 
   return (
-    <main className="min-h-screen bg-linear-to-br from-gray-950 via-gray-900 to-gray-950 p-4 md:p-8">
+    <main className="min-h-screen bg-(--background) p-4 md:p-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-8">
         <header className="text-center">
           <h1 className="text-4xl font-bold tracking-tight">
@@ -111,7 +111,7 @@ export default function HomeClient() {
               FocusPomomi
             </span>
           </h1>
-          <p className="mt-2 text-sm text-gray-400">
+          <p className="mt-2 text-sm text-(--muted)">
             Restez concentré, complétez vos tâches, récoltez vos fruits 🍎
           </p>
         </header>
@@ -122,15 +122,15 @@ export default function HomeClient() {
         */}
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* LEFT - tasks panel (primary) */}
-          <section className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur lg:flex-[1.4]">
+          <section className="flex flex-col gap-4 rounded-3xl border border-(--border) bg-(--surface) p-6 backdrop-blur lg:flex-[1.4]">
             <div>
-              <h2 className="text-xl font-semibold text-white">Tâches</h2>
-              <p className="text-sm text-gray-400">
+              <h2 className="text-xl font-semibold text-(--foreground)">Tâches</h2>
+              <p className="text-sm text-(--muted)">
                 Démarrer une tâche lance automatiquement le pomodoro.
               </p>
             </div>
             <TaskForm onAdd={handleAddTask} />
-            <hr className="border-white/10" />
+            <hr className="border-(--border)" />
             <div className="overflow-y-auto">
               <TaskList
                 activeTask={activeTask}
@@ -146,7 +146,7 @@ export default function HomeClient() {
           </section>
 
           {/* RIGHT - pomodoro panel (secondary) */}
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur lg:flex-1">
+          <section className="rounded-3xl border border-(--border) bg-(--surface) p-6 backdrop-blur lg:flex-1">
             <PomodoroTimer
               mode={mode}
               minutes={minutes}
