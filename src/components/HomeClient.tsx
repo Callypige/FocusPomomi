@@ -171,6 +171,17 @@ export default function HomeClient() {
           <a href="https://sonourrypayn.dev" className="text-gray-400 transition-colors hover:text-gray-300">
             Website Link: https://sonourrypayn.dev
           </a>
+          <p>
+            Clock icon by{" "}
+            <a
+              href="https://icons8.com/icons/set/clock--static--purple"
+              className="text-gray-400 transition-colors hover:text-gray-300"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Icons8
+            </a>
+          </p>
         </footer>
       </div>
     </main>
