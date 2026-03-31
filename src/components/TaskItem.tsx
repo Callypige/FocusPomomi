@@ -61,7 +61,7 @@ export default function TaskItem({
 
       {/* Task info */}
       <div className="flex-1 min-w-0">
-        <p className={`font-medium truncate ${task.status === "completed" ? "line-through text-gray-500" : "text-white"}`}>
+        <p className={`font-medium truncate ${task.status === "completed" ? "line-through text-gray-500 dark:text-gray-500" : "text-gray-900 dark:text-white"}`}>
           {task.title}
         </p>
         <div className="flex items-center gap-2 mt-0.5">
