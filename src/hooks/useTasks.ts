@@ -10,7 +10,7 @@ type TaskApiItem = Omit<Task, "id"> & { _id: string };
 
 const api = {
   getTasks: (): Promise<TaskApiItem[]> => fetch("/api/tasks").then((r) => r.json()),
-  createTask: (body: { title: string; durationMinutes: number }) =>
+  createTask: (body: { title: string; durationMinutes?: number }) =>
     fetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -70,7 +70,7 @@ export function useTasks() {
     queryKey: ["tasks"],
     queryFn: () => api.getTasks().then((data) => data.map(normalizeTask)),
     enabled: !!isSignedIn,
-    staleTime: Infinity, // never refetch automatically — we manage cache manually
+    staleTime: Infinity,
     refetchOnWindowFocus: false,
   });
 
@@ -78,7 +78,7 @@ export function useTasks() {
   const { data: guestTasks = [] } = useQuery<Task[]>({
     queryKey: ["guest-tasks"],
     queryFn: () => loadGuestTasks(),
-    enabled: isLoaded && !isSignedIn && isMounted, // wait until client is mounted
+    enabled: isLoaded && !isSignedIn && isMounted,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   });
@@ -88,7 +88,7 @@ export function useTasks() {
   // --- MUTATIONS ---
 
   const addMutation = useMutation({
-    mutationFn: async (vars: { title: string; durationMinutes: number }) => {
+    mutationFn: async (vars: { title: string; durationMinutes?: number }) => {
       if (isSignedIn) {
         return api.createTask(vars).then(normalizeTask);
       }
@@ -157,7 +157,7 @@ export function useTasks() {
     },
   });
 
-  const addTask = async (title: string, durationMinutes: number): Promise<string> => {
+  const addTask = async (title: string, durationMinutes?: number): Promise<string> => {
     const task = await addMutation.mutateAsync({ title, durationMinutes });
     return task.id;
   };
@@ -177,7 +177,6 @@ export function useTasks() {
 
     if (isSignedIn) {
       try {
-        // Direct fetch — avoid updateMutation.onSuccess overwriting cache with single task
         await fetch(`/api/tasks/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -187,7 +186,6 @@ export function useTasks() {
         console.error("startTask failed:", error);
       }
     } else {
-      // Guest — persist optimistic update to localStorage
       const updated = guestTasks.map((t) => {
         if (t.status === "completed" || t.status === "failed") return t;
         if (t.id === id) return { ...t, status: "in_progress" as const };
@@ -199,7 +197,8 @@ export function useTasks() {
   };
 
   const completeTask = (id: string) => {
-    const fruit = getRandomFruit();
+    const task = tasks.find((t) => t.id === id);
+    const fruit = task?.durationMinutes !== undefined ? getRandomFruit() : undefined;
     const completedAt = new Date();
     updateMutation.mutate({ id, status: "completed", fruit, completedAt });
   };
@@ -212,15 +211,20 @@ export function useTasks() {
     deleteMutation.mutate(id);
   };
 
-  const activeTask = tasks.find((t) => t.status === "in_progress") ?? null;
-  const pendingTasks = tasks.filter((t) => t.status === "pending");
-  const completedTasks = tasks.filter((t) => t.status === "completed" || t.status === "failed");
+  const activeTask = tasks.find((t) => t.status === "in_progress" && t.durationMinutes !== undefined) ?? null;
+  const pendingTasks = tasks.filter((t) => t.status === "pending" && t.durationMinutes !== undefined);
+  const completedTasks = tasks.filter(
+    (t) => (t.status === "completed" || t.status === "failed") && t.durationMinutes !== undefined
+  );
+  // Non-pomodoro tasks: pending and completed (no in_progress, no fail)
+  const nonPomodoroTasks = tasks.filter((t) => t.durationMinutes === undefined);
 
   return {
     tasks,
     activeTask,
     pendingTasks,
     completedTasks,
+    nonPomodoroTasks,
     addTask,
     startTask,
     completeTask,
