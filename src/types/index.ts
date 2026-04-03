@@ -5,7 +5,8 @@ export type PomodoroMode = "focus" | "short_break" | "long_break";
 export interface Task {
   id: string;
   title: string;
-  durationMinutes: number;
+  /** Undefined when the task has no Pomodoro timer (simple reminder task). */
+  durationMinutes?: number;
   status: TaskStatus;
   createdAt: Date;
   completedAt?: Date;

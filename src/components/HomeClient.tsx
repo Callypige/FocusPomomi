@@ -1,19 +1,25 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useTasks } from "@/hooks/useTasks";
 import { usePomodoro } from "@/hooks/usePomodoro";
 import TaskForm from "@/components/TaskForm";
 import TaskList from "@/components/TaskList";
 import PomodoroTimer from "@/components/PomodoroTimer";
+import CalendarView from "@/components/CalendarView";
+
+type Tab = "tasks" | "calendar";
 
 export default function HomeClient() {
+  const [activeTab, setActiveTab] = useState<Tab>("tasks");
+
   // Tasks state + actions
   const {
     tasks,
     activeTask,
     pendingTasks,
     completedTasks,
+    nonPomodoroTasks,
     addTask,
     startTask,
     completeTask,
@@ -24,7 +30,6 @@ export default function HomeClient() {
   // Callback to trigger when a pomodoro session completes (either focus or break)
   const handleSessionComplete = useCallback(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
-    // Request permission if not already granted
     Notification.requestPermission().then((perm) => {
       if (perm === "granted") {
         new Notification("🍅 Session terminée !", {
@@ -50,15 +55,16 @@ export default function HomeClient() {
     stop: stopTimer,
   } = usePomodoro(handleSessionComplete);
 
-  // Helper to know if the timer just completed
-  // (used to show "Mark as done" button on tasks)
   const isTimerDone = !isRunning && minutes === 0 && seconds === 0;
 
   const handleAddTask = useCallback(
-    async (title: string, durationMinutes: number) => {
+    async (title: string, durationMinutes?: number) => {
       const id = await addTask(title, durationMinutes);
-      startTask(id);
-      startFocusSession(durationMinutes);
+      // Only start the timer for Pomodoro tasks
+      if (durationMinutes !== undefined) {
+        startTask(id);
+        startFocusSession(durationMinutes);
+      }
     },
     [addTask, startTask, startFocusSession]
   );
@@ -67,7 +73,7 @@ export default function HomeClient() {
   const handleStartTask = useCallback(
     (id: string) => {
       const task = tasks.find((t) => t.id === id);
-      if (!task) return;
+      if (!task || task.durationMinutes === undefined) return;
       startTask(id);
       startFocusSession(task.durationMinutes);
     },
@@ -116,53 +122,93 @@ export default function HomeClient() {
           </p>
         </header>
 
-        {/*
-          Two-column layout: tasks (left, wider) + pomodoro (right, narrower)
-          On mobile: single column, tasks on top, pomodoro below
-        */}
-        <div className="flex flex-col gap-6 lg:flex-row">
-          {/* LEFT - tasks panel (primary) */}
-          <section className="flex flex-col gap-4 rounded-3xl border border-(--border) bg-(--surface) p-6 backdrop-blur lg:flex-[1.4]">
-            <div>
-              <h2 className="text-xl font-semibold text-(--foreground)">Tâches</h2>
+        {/* Tab navigation */}
+        <div className="flex gap-2 self-center rounded-2xl border border-(--border) bg-(--surface) p-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab("tasks")}
+            className={`rounded-xl px-5 py-2 text-sm font-medium transition-all ${
+              activeTab === "tasks"
+                ? "bg-linear-to-r from-red-500/30 to-orange-500/30 text-orange-200 border border-orange-400/30"
+                : "text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            🍅 Tâches
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("calendar")}
+            className={`rounded-xl px-5 py-2 text-sm font-medium transition-all ${
+              activeTab === "calendar"
+                ? "bg-blue-500/20 text-blue-200 border border-blue-400/30"
+                : "text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            📅 Calendrier
+          </button>
+        </div>
+
+        {activeTab === "tasks" ? (
+          /*
+            Two-column layout: tasks (left, wider) + pomodoro (right, narrower)
+            On mobile: single column, tasks on top, pomodoro below
+          */
+          <div className="flex flex-col gap-6 lg:flex-row">
+            {/* LEFT - tasks panel (primary) */}
+            <section className="flex flex-col gap-4 rounded-3xl border border-(--border) bg-(--surface) p-6 backdrop-blur lg:flex-[1.4]">
+              <div>
+                <h2 className="text-xl font-semibold text-(--foreground)">Tâches</h2>
+                <p className="text-sm text-(--muted)">
+                  Démarrer une tâche Pomodoro lance automatiquement le timer.
+                </p>
+              </div>
+              <TaskForm onAdd={handleAddTask} />
+              <hr className="border-(--border)" />
+              <div className="overflow-y-auto">
+                <TaskList
+                  activeTask={activeTask}
+                  pendingTasks={pendingTasks}
+                  completedTasks={completedTasks}
+                  nonPomodoroTasks={nonPomodoroTasks}
+                  isTimerDone={isTimerDone}
+                  onStart={handleStartTask}
+                  onComplete={handleCompleteTask}
+                  onFail={handleFailTask}
+                  onRemove={handleRemoveTask}
+                />
+              </div>
+            </section>
+
+            {/* RIGHT - pomodoro panel (secondary) */}
+            <section className="rounded-3xl border border-(--border) bg-(--surface) p-6 backdrop-blur lg:flex-1">
+              <PomodoroTimer
+                mode={mode}
+                minutes={minutes}
+                seconds={seconds}
+                isRunning={isRunning}
+                progress={progress}
+                sessionsCompleted={sessionsCompleted}
+                activeTaskTitle={activeTask?.title}
+                onPause={pause}
+                onResume={resume}
+                onReset={reset}
+                onStartBreak={startBreak}
+                onStartWithoutTask={() => startFocusSession(25)}
+              />
+            </section>
+          </div>
+        ) : (
+          /* Calendar view */
+          <section className="rounded-3xl border border-(--border) bg-(--surface) p-6 backdrop-blur">
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-(--foreground)">Calendrier des tâches</h2>
               <p className="text-sm text-(--muted)">
-                Démarrer une tâche lance automatiquement le pomodoro.
+                Visualisez vos tâches par jour. Cliquez sur une date pour voir le détail.
               </p>
             </div>
-            <TaskForm onAdd={handleAddTask} />
-            <hr className="border-(--border)" />
-            <div className="overflow-y-auto">
-              <TaskList
-                activeTask={activeTask}
-                pendingTasks={pendingTasks}
-                completedTasks={completedTasks}
-                isTimerDone={isTimerDone}
-                onStart={handleStartTask}
-                onComplete={handleCompleteTask}
-                onFail={handleFailTask}
-                onRemove={handleRemoveTask}
-              />
-            </div>
+            <CalendarView tasks={tasks} />
           </section>
-
-          {/* RIGHT - pomodoro panel (secondary) */}
-          <section className="rounded-3xl border border-(--border) bg-(--surface) p-6 backdrop-blur lg:flex-1">
-            <PomodoroTimer
-              mode={mode}
-              minutes={minutes}
-              seconds={seconds}
-              isRunning={isRunning}
-              progress={progress}
-              sessionsCompleted={sessionsCompleted}
-              activeTaskTitle={activeTask?.title}
-              onPause={pause}
-              onResume={resume}
-              onReset={reset}
-              onStartBreak={startBreak}
-              onStartWithoutTask={() => startFocusSession(25)}
-            />
-          </section>
-        </div>
+        )}
 
         <footer className="pb-4 text-center text-xs text-gray-600">
           FocusPomomi - Technique Pomodoro &amp; Gestion de tâches
