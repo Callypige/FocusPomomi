@@ -3,14 +3,14 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
-import type { Task } from "@/types";
+import type { Task, TaskType } from "@/types";
 import { getRandomFruit } from "@/lib/fruits";
 
 type TaskApiItem = Omit<Task, "id"> & { _id: string };
 
 const api = {
   getTasks: (): Promise<TaskApiItem[]> => fetch("/api/tasks").then((r) => r.json()),
-  createTask: (body: { title: string; durationMinutes: number }) =>
+  createTask: (body: { title: string; type: TaskType; durationMinutes?: number; scheduledDate?: Date }) =>
     fetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -30,8 +30,10 @@ function normalizeTask(t: TaskApiItem): Task {
   return {
     ...t,
     id: t._id,
+    type: t.type ?? "pomodoro",
     createdAt: new Date(t.createdAt),
     completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
+    scheduledDate: t.scheduledDate ? new Date(t.scheduledDate) : undefined,
   };
 }
 
@@ -43,8 +45,10 @@ function loadGuestTasks(): Task[] {
     if (!saved) return [];
     return JSON.parse(saved).map((t: Task) => ({
       ...t,
+      type: t.type ?? "pomodoro",
       createdAt: new Date(t.createdAt),
       completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
+      scheduledDate: t.scheduledDate ? new Date(t.scheduledDate) : undefined,
     }));
   } catch {
     return [];
@@ -88,7 +92,7 @@ export function useTasks() {
   // --- MUTATIONS ---
 
   const addMutation = useMutation({
-    mutationFn: async (vars: { title: string; durationMinutes: number }) => {
+    mutationFn: async (vars: { title: string; type: TaskType; durationMinutes?: number; scheduledDate?: Date }) => {
       if (isSignedIn) {
         return api.createTask(vars).then(normalizeTask);
       }
@@ -96,7 +100,9 @@ export function useTasks() {
       const newTask: Task = {
         id: crypto.randomUUID(),
         title: vars.title,
+        type: vars.type,
         durationMinutes: vars.durationMinutes,
+        scheduledDate: vars.scheduledDate,
         status: "pending",
         createdAt: new Date(),
       };
@@ -157,8 +163,13 @@ export function useTasks() {
     },
   });
 
-  const addTask = async (title: string, durationMinutes: number): Promise<string> => {
-    const task = await addMutation.mutateAsync({ title, durationMinutes });
+  const addTask = async (
+    title: string,
+    type: TaskType,
+    durationMinutes?: number,
+    scheduledDate?: Date
+  ): Promise<string> => {
+    const task = await addMutation.mutateAsync({ title, type, durationMinutes, scheduledDate });
     return task.id;
   };
 
@@ -212,13 +223,21 @@ export function useTasks() {
     deleteMutation.mutate(id);
   };
 
-  const activeTask = tasks.find((t) => t.status === "in_progress") ?? null;
-  const pendingTasks = tasks.filter((t) => t.status === "pending");
-  const completedTasks = tasks.filter((t) => t.status === "completed" || t.status === "failed");
+  const scheduleTask = (id: string, scheduledDate: Date | undefined) => {
+    updateMutation.mutate({ id, scheduledDate });
+  };
+
+  const activeTask = tasks.find((t) => t.type === "pomodoro" && t.status === "in_progress") ?? null;
+  const pomodoroTasks = tasks.filter((t) => t.type === "pomodoro");
+  const simpleTasks = tasks.filter((t) => t.type === "simple");
+  const pendingTasks = pomodoroTasks.filter((t) => t.status === "pending");
+  const completedTasks = pomodoroTasks.filter((t) => t.status === "completed" || t.status === "failed");
 
   return {
     tasks,
     activeTask,
+    pomodoroTasks,
+    simpleTasks,
     pendingTasks,
     completedTasks,
     addTask,
@@ -226,5 +245,6 @@ export function useTasks() {
     completeTask,
     failTask,
     removeTask,
+    scheduleTask,
   };
 }

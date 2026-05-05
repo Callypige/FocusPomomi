@@ -1,12 +1,16 @@
 export type TaskStatus = "pending" | "in_progress" | "completed" | "failed";
 
+export type TaskType = "pomodoro" | "simple";
+
 export type PomodoroMode = "focus" | "short_break" | "long_break";
 
 export interface Task {
   id: string;
   title: string;
-  durationMinutes: number;
+  type: TaskType;
+  durationMinutes?: number;
   status: TaskStatus;
+  scheduledDate?: Date;
   createdAt: Date;
   completedAt?: Date;
   fruit?: string;

@@ -3,19 +3,22 @@
 import { useState } from "react";
 
 interface TaskFormProps {
-  onAdd: (title: string, durationMinutes: number) => void;
+  onAdd: (title: string, durationMinutes: number, scheduledDate?: Date) => void;
 }
 
 export default function TaskForm({ onAdd }: TaskFormProps) {
   const [title, setTitle] = useState("");
   const [duration, setDuration] = useState(25);
+  const [dateStr, setDateStr] = useState("");
 
   const handleSubmit = () => {
     const trimmed = title.trim();
     if (!trimmed) return;
-    onAdd(trimmed, duration);
+    const scheduledDate = dateStr ? new Date(dateStr) : undefined;
+    onAdd(trimmed, duration, scheduledDate);
     setTitle("");
     setDuration(25);
+    setDateStr("");
   };
 
   return (
@@ -39,6 +42,15 @@ export default function TaskForm({ onAdd }: TaskFormProps) {
           className="w-20 rounded-xl border border-white/15 bg-black/20 px-3 py-1.5 text-white outline-none focus:border-orange-400"
         />
         <span>min</span>
+      </div>
+      <div className="flex items-center gap-3 text-sm text-gray-400">
+        <span>Date :</span>
+        <input
+          type="date"
+          value={dateStr}
+          onChange={(e) => setDateStr(e.target.value)}
+          className="flex-1 rounded-xl border border-white/15 bg-black/20 px-3 py-1.5 text-white outline-none focus:border-orange-400"
+        />
       </div>
       <button
         onClick={handleSubmit}
